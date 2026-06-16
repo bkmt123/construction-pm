@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Construction PM Hub</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg2: #f5f5f4;
+    --bg3: #eeede8;
+    --text: #1a1a1a;
+    --text2: #6b7280;
+    --text3: #9ca3af;
+    --border: rgba(0,0,0,0.12);
+    --border2: rgba(0,0,0,0.2);
+    --radius: 8px;
+    --radius-lg: 12px;
+    --info-bg: #e6f1fb;
+    --info-text: #0c447c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1e;
+      --bg2: #2c2c2e;
+      --bg3: #3a3a3c;
+      --text: #f5f5f5;
+      --text2: #a1a1aa;
+      --text3: #71717a;
+      --border: rgba(255,255,255,0.1);
+      --border2: rgba(255,255,255,0.2);
+      --info-bg: #0c2d4a;
+      --info-text: #7bb8f4;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg3); color: var(--text); font-size: 14px; line-height: 1.5; }
+  .app { max-width: 900px; margin: 0 auto; padding: 0 0 4rem; }
+  header { background: var(--bg); border-bottom: 0.5px solid var(--border); padding: 1rem 1.5rem; position: sticky; top: 0; z-index: 10; }
+  .header-inner { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; max-width: 900px; margin: 0 auto; }
+  .logo { font-size: 16px; font-weight: 600; }
+  .logo span { color: var(--text2); font-weight: 400; font-size: 13px; margin-left: 6px; }
+  nav { display: flex; gap: 5px; flex-wrap: wrap; }
+  .nav-btn { font-size: 12px; padding: 5px 12px; border-radius: 99px; border: 0.5px solid var(--border2); background: transparent; color: var(--text); cursor: pointer; white-space: nowrap; }
+  .nav-btn.active { background: var(--text); color: var(--bg); }
+  main { padding: 1.5rem; }
+  .card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1rem 1.25rem; }
+  .metric { background: var(--bg2); border-radius: var(--radius); padding: 12px 14px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-bottom: 1.25rem; }
+  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+  .ghost { color: var(--text2); }
+  .sl { font-size: 11px; font-weight: 500; color: var(--text2); letter-spacing: .04em; text-transform: uppercase; margin: 0 0 8px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .tag { font-size: 11px; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
+  .tag-open { background: #e6f1fb; color: #0c447c; }
+  .tag-progress { background: #faeeda; color: #633806; }
+  .tag-done { background: #eaf3de; color: #27500a; }
+  .tag-high { background: #fcebeb; color: #791f1f; }
+  .tag-med { background: #faeeda; color: #633806; }
+  .tag-low { background: #eaf3de; color: #27500a; }
+  .tag-pending { background: #eeedfe; color: #3c3489; }
+  .tag-submitted { background: #faeeda; color: #633806; }
+  .tag-approved { background: #eaf3de; color: #27500a; }
+  .tag-rejected { background: #fcebeb; color: #791f1f; }
+  .tag-closed { background: var(--bg2); color: var(--text2); }
+  input, select, textarea { font-size: 13px; padding: 7px 10px; border: 0.5px solid var(--border2); border-radius: var(--radius); background: var(--bg); color: var(--text); outline: none; }
+  input:focus, select:focus, textarea:focus { border-color: var(--text2); }
+  .btn-primary { font-size: 12px; padding: 6px 14px; border-radius: 99px; border: 0.5px solid var(--border2); background: var(--text); color: var(--bg); cursor: pointer; }
+  .btn-secondary { font-size: 12px; padding: 6px 12px; border-radius: 99px; border: 0.5px solid var(--border2); background: transparent; color: var(--text); cursor: pointer; }
+  .btn-icon { background: none; border: none; cursor: pointer; color: var(--text2); font-size: 15px; padding: 2px; }
+  .mb-8 { margin-bottom: 8px; }
+  .mb-12 { margin-bottom: 12px; }
+  .mb-16 { margin-bottom: 1rem; }
+  .divider { border: none; border-top: 0.5px solid var(--border); margin: 8px 0; }
+  .avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--info-bg); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 500; color: var(--info-text); flex-shrink: 0; }
+  .progress-bar { background: var(--bg2); border-radius: 99px; height: 5px; overflow: hidden; }
+  .progress-fill { background: var(--text); height: 5px; border-radius: 99px; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .cal-day { min-height: 64px; border: 0.5px solid var(--border); border-radius: var(--radius); padding: 5px; }
+  .cal-day.today { border-color: var(--text2); background: var(--bg2); }
+  .cal-daynum { font-size: 11px; font-weight: 500; margin-bottom: 2px; }
+  .cal-event { font-size: 10px; padding: 2px 4px; border-radius: 3px; margin-top: 2px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .ai-out { background: var(--bg2); border-radius: var(--radius); padding: 1rem; font-size: 13px; line-height: 1.7; white-space: pre-wrap; min-height: 60px; }
+  .hidden { display: none !important; }
+  .form-box { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1rem 1.25rem; margin-bottom: 12px; }
+  .form-title { font-size: 14px; font-weight: 500; margin-bottom: 10px; }
+  .form-col { display: flex; flex-direction: column; gap: 8px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="logo">Construction PM Hub <span>by Burhan</span></div>
+    <nav id="nav">
+      <button class="nav-btn active" onclick="showView('dashboard',this)"><i class="ti ti-layout-dashboard"></i> Dashboard</button>
+      <button class="nav-btn" onclick="showView('tasks',this)"><i class="ti ti-check"></i> Tasks</button>
+      <button class="nav-btn" onclick="showView('rfis',this)"><i class="ti ti-file-description"></i> RFIs</button>
+      <button class="nav-btn" onclick="showView('submittals',this)"><i class="ti ti-files"></i> Submittals</button>
+      <button class="nav-btn" onclick="showView('calendar',this)"><i class="ti ti-calendar"></i> Calendar</button>
+      <button class="nav-btn" onclick="showView('contacts',this)"><i class="ti ti-users"></i> Contacts</button>
+      <button class="nav-btn" onclick="showView('generate',this)"><i class="ti ti-sparkles"></i> Generate</button>
+    </nav>
+  </div>
+</header>
+
+<div class="app">
+  <main id="view-root"></main>
+</div>
+
+<script>
+const STORAGE_KEY = 'pm_hub_v1';
+
+const DEF = {
+  projects: [
+    { id: 'hillsdale', name: 'Hillsdale Flats', status: 'active', phase: 'Construction', completion: 42 },
+    { id: 'dcbio', name: 'DC Bio-Retention', status: 'active', phase: 'Installation', completion: 28 }
+  ],
+  tasks: [
+    { id: 't1', project: 'hillsdale', title: 'Collect foreman contact info from all subs', priority: 'high', status: 'open', due: '2026-06-18' },
+    { id: 't2', project: 'hillsdale', title: 'Submit 4-week lookahead to GC', priority: 'high', status: 'open', due: '2026-06-17' },
+    { id: 't3', project: 'dcbio', title: 'DOEE compliance review - structures 1–8', priority: 'med', status: 'progress', due: '2026-06-20' },
+    { id: 't4', project: 'dcbio', title: 'Submit Made in America documentation', priority: 'high', status: 'open', due: '2026-06-22' },
+    { id: 't5', project: 'hillsdale', title: 'Update submittal log in Procore', priority: 'low', status: 'progress', due: '2026-06-19' }
+  ],
+  rfis: [
+    { id: 'r1', num: 'RFI-001', project: 'hillsdale', subject: 'Confirm underdrain pipe spec at grid D4', status: 'open', submitted: '2026-06-10', due: '2026-06-20', assignedTo: 'EOR - Bowman', question: 'Contractor requests clarification on underdrain pipe diameter at grid D4. Drawings show 6" but spec section 02-315 references 4".' },
+    { id: 'r2', num: 'RFI-002', project: 'dcbio', subject: 'Bio-retention soil mix approved substitution', status: 'pending', submitted: '2026-06-12', due: '2026-06-19', assignedTo: 'Lawrence Omar (DOEE)', question: 'Request approval for substitution of specified bio-retention soil mix with locally sourced equivalent meeting DOEE spec 4.2.1.' }
+  ],
+  submittals: [
+    { id: 's1', num: 'SUB-001', project: 'hillsdale', description: 'Underdrain pipe product data', specSection: '02-315', subBy: 'Mechanical Sub', dateReceived: '2026-06-08', returnDue: '2026-06-23', status: 'submitted' },
+    { id: 's2', num: 'SUB-002', project: 'dcbio', description: 'Bio-retention soil mix certificate', specSection: '02-920', subBy: 'Landscape Sub', dateReceived: '2026-06-11', returnDue: '2026-06-25', status: 'pending' },
+    { id: 's3', num: 'SUB-003', project: 'hillsdale', description: 'Storm inlet grate shop drawings', specSection: '02-630', subBy: 'Civil Sub', dateReceived: '2026-06-13', returnDue: '2026-06-28', status: 'approved' }
+  ],
+  contacts: [
+    { id: 'c1', name: 'Lawrence Omar', company: 'DOEE', role: 'Project Reviewer', phone: '(202) 555-0141', email: 'l.omar@doee.dc.gov', project: 'dcbio' },
+    { id: 'c2', name: 'Juwan Mohammed', company: 'Internal', role: 'Superintendent', phone: '(202) 555-0177', email: 'j.mohammed@company.com', project: 'both' },
+    { id: 'c3', name: 'Bowman Consulting', company: 'Bowman Consulting Group', role: 'Engineer of Record', phone: '(703) 555-0199', email: 'eor@bowmanconsulting.com', project: 'dcbio' },
+    { id: 'c4', name: 'Shalom Tesfaye', company: 'Electrical Sub', role: 'Subcontractor PM', phone: '(301) 555-0122', email: 's.tesfaye@electricalsub.com', project: 'hillsdale' }
+  ],
+  events: [
+    { id: 'e1', date: '2026-06-17', title: 'Lookahead due – Hillsdale', project: 'hillsdale', type: 'deadline' },
+    { id: 'e2', date: '2026-06-18', title: 'Foreman meeting – Hillsdale', project: 'hillsdale', type: 'meeting' },
+    { id: 'e3', date: '2026-06-19', title: 'RFI-002 due – DOEE', project: 'dcbio', type: 'deadline' },
+    { id: 'e4', date: '2026-06-20', title: 'DOEE compliance review', project: 'dcbio', type: 'meeting' },
+    { id: 'e5', date: '2026-06-22', title: 'Made in America docs due', project: 'dcbio', type: 'deadline' },
+    { id: 'e6', date: '2026-06-25', title: 'Site walk – Lawrence Omar', project: 'dcbio', type: 'meeting' }
+  ]
+};
+
+let D = null;
+
+function load() {
+  try { const s = localStorage.getItem(STORAGE_KEY); D = s ? JSON.parse(s) : JSON.parse(JSON.stringify(DEF)); }
+  catch { D = JSON.parse(JSON.stringify(DEF)); }
+}
+
+function save() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(D)); } catch {}
+}
+
+function pname(id) { return D.projects.find(p => p.id === id)?.name || id; }
+function initials(name) { return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase(); }
+
+let currentView = 'dashboard';
+
+function showView(v, btn) {
+  currentView = v;
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  render(v);
+}
+
+function render(v) {
+  const r = document.getElementById('view-root');
+  if (v === 'dashboard') r.innerHTML = vDash();
+  else if (v === 'tasks') r.innerHTML = vTasks();
+  else if (v === 'rfis') r.innerHTML = vRFIs();
+  else if (v === 'submittals') r.innerHTML = vSubmittals();
+  else if (v === 'calendar') r.innerHTML = vCalendar();
+  else if (v === 'contacts') r.innerHTML = vContacts();
+  else if (v === 'generate') r.innerHTML = vGenerate();
+}
+
+// ── Dashboard ──────────────────────────────────────────────
+function vDash() {
+  const open = D.tasks.filter(t => t.status === 'open').length;
+  const prog = D.tasks.filter(t => t.status === 'progress').length;
+  const rfiOpen = D.rfis.filter(r => r.status === 'open' || r.status === 'pending').length;
+  const subPend = D.submittals.filter(s => s.status === 'pending' || s.status === 'submitted').length;
+  const high = D.tasks.filter(t => t.priority === 'high' && t.status !== 'done');
+  const today = '2026-06-15';
+  const soon = D.events.filter(e => e.date >= today && e.date <= '2026-06-22').sort((a,b) => a.date.localeCompare(b.date));
+  return `
+  <div class="grid-4">
+    <div class="metric"><p class="ghost" style="font-size:11px;margin-bottom:3px;">Open tasks</p><p style="font-size:22px;font-weight:600;">${open}</p></div>
+    <div class="metric"><p class="ghost" style="font-size:11px;margin-bottom:3px;">In progress</p><p style="font-size:22px;font-weight:600;">${prog}</p></div>
+    <div class="metric"><p class="ghost" style="font-size:11px;margin-bottom:3px;">Open RFIs</p><p style="font-size:22px;font-weight:600;">${rfiOpen}</p></div>
+    <div class="metric"><p class="ghost" style="font-size:11px;margin-bottom:3px;">Pending subs</p><p style="font-size:22px;font-weight:600;">${subPend}</p></div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <p class="sl">High priority</p>
+      ${high.length ? high.map(t => `
+      <div style="display:flex;gap:8px;padding:8px 0;border-bottom:0.5px solid var(--border);">
+        <i class="ti ti-alert-circle" style="font-size:15px;color:#e24b4a;flex-shrink:0;margin-top:1px;"></i>
+        <div>
+          <p style="font-size:13px;font-weight:500;margin-bottom:2px;">${t.title}</p>
+          <p class="ghost" style="font-size:11px;">${pname(t.project)} · due ${t.due}</p>
+        </div>
+      </div>`).join('') : '<p class="ghost" style="font-size:13px;">All clear</p>'}
+    </div>
+    <div class="card">
+      <p class="sl">Project progress</p>
+      ${D.projects.map(p => `
+      <div style="margin-bottom:14px;">
+        <div class="row" style="justify-content:space-between;margin-bottom:5px;">
+          <p style="font-size:13px;font-weight:500;">${p.name}</p>
+          <p class="ghost" style="font-size:11px;">${p.completion}% · ${p.phase}</p>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${p.completion}%;"></div></div>
+      </div>`).join('')}
+    </div>
+    <div class="card">
+      <p class="sl">Upcoming 7 days</p>
+      ${soon.map(e => `
+      <div style="display:flex;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--border);">
+        <i class="ti ti-${e.type === 'meeting' ? 'users' : 'clock'}" style="font-size:14px;color:var(--text2);flex-shrink:0;"></i>
+        <div>
+          <p style="font-size:13px;font-weight:500;margin-bottom:1px;">${e.title}</p>
+          <p class="ghost" style="font-size:11px;">${e.date}</p>
+        </div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+// ── Tasks ──────────────────────────────────────────────────
+function vTasks() {
+  return `
+  <div class="row mb-16" style="justify-content:flex-end;">
+    <button class="btn-primary" onclick="toggleForm('add-task-wrap')"><i class="ti ti-plus"></i> Add task</button>
+  </div>
+  <div id="add-task-wrap" class="form-box hidden">
+    <p class="form-title">New task</p>
+    <div class="form-col">
+      <input id="nt-title" placeholder="Task title" style="width:100%;">
+      <div class="row">
+        <select id="nt-proj">${D.projects.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}</select>
+        <select id="nt-pri"><option value="high">High</option><option value="med" selected>Medium</option><option value="low">Low</option></select>
+        <input type="date" id="nt-due" value="2026-06-25" style="flex:1;">
+      </div>
+      <div class="row">
+        <button class="btn-primary" onclick="addTask()">Save</button>
+        <button class="btn-secondary" onclick="toggleForm('add-task-wrap')">Cancel</button>
+      </div>
+    </div>
+  </div>
+  ${D.tasks.map(t => `
+  <div class="card mb-8" style="display:flex;align-items:flex-start;gap:10px;">
+    <input type="checkbox" ${t.status === 'done' ? 'checked' : ''} onchange="toggleTask('${t.id}',this.checked)" style="margin-top:3px;cursor:pointer;">
+    <div style="flex:1;min-width:0;">
+      <p style="font-size:13px;font-weight:500;margin-bottom:4px;${t.status === 'done' ? 'text-decoration:line-through;color:var(--text2);' : ''}">${t.title}</p>
+      <div class="row" style="gap:5px;">
+        <span class="tag tag-${t.priority}">${t.priority}</span>
+        <span class="tag tag-${t.status === 'open' ? 'open' : t.status === 'progress' ? 'progress' : 'done'}">${t.status === 'progress' ? 'in progress' : t.status}</span>
+        <span class="ghost" style="font-size:11px;">${pname(t.project)} · ${t.due}</span>
+      </div>
+    </div>
+    <button class="btn-icon" onclick="delTask('${t.id}')"><i class="ti ti-trash"></i></button>
+  </div>`).join('')}`;
+}
+
+function addTask() {
+  const title = document.getElementById('nt-title').value.trim(); if (!title) return;
+  D.tasks.unshift({ id: 't' + Date.now(), project: document.getElementById('nt-proj').value, title, priority: document.getElementById('nt-pri').value, status: 'open', due: document.getElementById('nt-due').value });
+  save(); render('tasks');
+}
+function toggleTask(id, checked) { const t = D.tasks.find(t => t.id === id); if (t) { t.status = checked ? 'done' : 'open'; save(); } }
+function delTask(id) { D.tasks = D.tasks.filter(t => t.id !== id); save(); render('tasks'); }
+
+// ── RFIs ───────────────────────────────────────────────────
+function vRFIs() {
+  return `
+  <div class="row mb-16" style="justify-content:flex-end;">
+    <button class="btn-primary" onclick="toggleForm('add-rfi-wrap')"><i class="ti ti-plus"></i> Add RFI</button>
+  </div>
+  <div id="add-rfi-wrap" class="form-box hidden">
+    <p class="form-title">New RFI</p>
+    <div class="form-col">
+      <div class="row">
+        <input id="nr-num" placeholder="RFI-00X" style="width:90px;">
+        <select id="nr-proj">${D.projects.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}</select>
+      </div>
+      <input id="nr-subj" placeholder="Subject" style="width:100%;">
+      <textarea id="nr-q" placeholder="Full question" style="width:100%;min-height:70px;resize:vertical;"></textarea>
+      <div class="row">
+        <input id="nr-to" placeholder="Assigned to" style="flex:1;">
+        <input type="date" id="nr-due" value="2026-07-01" style="flex:1;">
+      </div>
+      <div class="row">
+        <button class="btn-primary" onclick="addRFI()">Save</button>
+        <button class="btn-secondary" onclick="toggleForm('add-rfi-wrap')">Cancel</button>
+      </div>
+    </div>
+  </div>
+  ${D.rfis.map(r => `
+  <div class="card mb-8">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:0;">
+        <div class="row mb-8" style="gap:6px;">
+          <span style="font-size:12px;font-weight:500;color:var(--text2);">${r.num}</span>
+          <span class="tag tag-${r.status}">${r.status}</span>
+          <span class="ghost" style="font-size:11px;">${pname(r.project)}</span>
+        </div>
+        <p style="font-size:14px;font-weight:500;margin-bottom:4px;">${r.subject}</p>
+        <p class="ghost" style="font-size:12px;margin-bottom:6px;">${r.question}</p>
+        <p class="ghost" style="font-size:11px;">To: ${r.assignedTo} · Due: ${r.due}</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end;">
+        <select onchange="updateRFIStatus('${r.id}',this.value)" style="font-size:11px;padding:3px 6px;">
+          <option ${r.status === 'open' ? 'selected' : ''} value="open">Open</option>
+          <option ${r.status === 'pending' ? 'selected' : ''} value="pending">Pending</option>
+          <option ${r.status === 'closed' ? 'selected' : ''} value="closed">Closed</option>
+        </select>
+        <button class="btn-icon" onclick="delRFI('${r.id}')"><i class="ti ti-trash"></i></button>
+      </div>
+    </div>
+  </div>`).join('')}`;
+}
+
+function addRFI() {
+  const subj = document.getElementById('nr-subj').value.trim(); if (!subj) return;
+  D.rfis.unshift({ id: 'r' + Date.now(), num: document.getElementById('nr-num').value || 'RFI-00X', project: document.getElementById('nr-proj').value, subject: subj, status: 'open', submitted: new Date().toISOString().slice(0, 10), due: document.getElementById('nr-due').value, assignedTo: document.getElementById('nr-to').value, question: document.getElementById('nr-q').value });
+  save(); render('rfis');
+}
+function updateRFIStatus(id, val) { const r = D.rfis.find(r => r.id === id); if (r) { r.status = val; save(); } }
+function delRFI(id) { D.rfis = D.rfis.filter(r => r.id !== id); save(); render('rfis'); }
+
+// ── Submittals ─────────────────────────────────────────────
+function vSubmittals() {
+  return `
+  <div class="row mb-16" style="justify-content:flex-end;">
+    <button class="btn-primary" onclick="toggleForm('add-sub-wrap')"><i class="ti ti-plus"></i> Add submittal</button>
+  </div>
+  <div id="add-sub-wrap" class="form-box hidden">
+    <p class="form-title">New submittal</p>
+    <div class="form-col">
+      <div class="row">
+        <input id="ns-num" placeholder="SUB-00X" style="width:90px;">
+        <select id="ns-proj">${D.projects.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}</select>
+      </div>
+      <input id="ns-desc" placeholder="Description" style="width:100%;">
+      <div class="row">
+        <input id="ns-spec" placeholder="Spec section" style="width:90px;">
+        <input id="ns-sub" placeholder="Submitted by" style="flex:1;">
+      </div>
+      <div class="row">
+        <label style="font-size:12px;color:var(--text2);">Received</label>
+        <input type="date" id="ns-recv" value="2026-06-15" style="flex:1;">
+        <label style="font-size:12px;color:var(--text2);">Return due</label>
+        <input type="date" id="ns-due" value="2026-07-01" style="flex:1;">
+      </div>
+      <div class="row">
+        <button class="btn-primary" onclick="addSubmittal()">Save</button>
+        <button class="btn-secondary" onclick="toggleForm('add-sub-wrap')">Cancel</button>
+      </div>
+    </div>
+  </div>
+  ${D.submittals.map(s => `
+  <div class="card mb-8" style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+    <div style="flex:1;min-width:0;">
+      <div class="row mb-8" style="gap:6px;">
+        <span style="font-size:12px;font-weight:500;color:var(--text2);">${s.num}</span>
+        <span class="tag tag-${s.status}">${s.status}</span>
+        <span class="ghost" style="font-size:11px;">${pname(s.project)}</span>
+      </div>
+      <p style="font-size:14px;font-weight:500;margin-bottom:3px;">${s.description}</p>
+      <p class="ghost" style="font-size:11px;">Spec ${s.specSection} · ${s.subBy} · Return due ${s.returnDue}</p>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end;">
+      <select onchange="updateSubStatus('${s.id}',this.value)" style="font-size:11px;padding:3px 6px;">
+        <option ${s.status === 'pending' ? 'selected' : ''} value="pending">Pending</option>
+        <option ${s.status === 'submitted' ? 'selected' : ''} value="submitted">Submitted</option>
+        <option ${s.status === 'approved' ? 'selected' : ''} value="approved">Approved</option>
+        <option ${s.status === 'rejected' ? 'selected' : ''} value="rejected">Rejected</option>
+      </select>
+      <button class="btn-icon" onclick="delSub('${s.id}')"><i class="ti ti-trash"></i></button>
+    </div>
+  </div>`).join('')}`;
+}
+
+function addSubmittal() {
+  const desc = document.getElementById('ns-desc').value.trim(); if (!desc) return;
+  D.submittals.unshift({ id: 's' + Date.now(), num: document.getElementById('ns-num').value || 'SUB-00X', project: document.getElementById('ns-proj').value, description: desc, specSection: document.getElementById('ns-spec').value, subBy: document.getElementById('ns-sub').value, dateReceived: document.getElementById('ns-recv').value, returnDue: document.getElementById('ns-due').value, status: 'pending' });
+  save(); render('submittals');
+}
+function updateSubStatus(id, val) { const s = D.submittals.find(s => s.id === id); if (s) { s.status = val; save(); } }
+function delSub(id) { D.submittals = D.submittals.filter(s => s.id !== id); save(); render('submittals'); }
+
+// ── Calendar ───────────────────────────────────────────────
+function vCalendar() {
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const year = 2026, month = 5;
+  const first = new Date(year, month, 1).getDay();
+  const total = new Date(year, month + 1, 0).getDate();
+  let cells = '';
+  for (let i = 0; i < first; i++) cells += '<div></div>';
+  for (let d = 1; d <= total; d++) {
+    const ds = `2026-06-${String(d).padStart(2, '0')}`;
+    const evs = D.events.filter(e => e.date === ds);
+    const isToday = d === 15;
+    cells += `<div class="cal-day${isToday ? ' today' : ''}">
+      <p class="cal-daynum">${d}</p>
+      ${evs.map(e => `<div class="cal-event" style="background:${e.type === 'meeting' ? '#e1f5ee' : '#faeeda'};color:${e.type === 'meeting' ? '#085041' : '#633806'};" title="${e.title}">${e.title}</div>`).join('')}
+    </div>`;
+  }
+  return `
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:10px;">
+    <p style="font-size:16px;font-weight:600;">June 2026</p>
+    <button class="btn-primary" onclick="toggleForm('add-event-wrap')"><i class="ti ti-plus"></i> Add event</button>
+  </div>
+  <div id="add-event-wrap" class="form-box hidden">
+    <div class="form-col">
+      <input id="ne-title" placeholder="Event title" style="width:100%;">
+      <div class="row">
+        <input type="date" id="ne-date" value="2026-06-20" style="flex:1;">
+        <select id="ne-proj">${D.projects.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}</select>
+        <select id="ne-type"><option value="meeting">Meeting</option><option value="deadline">Deadline</option></select>
+      </div>
+      <div class="row">
+        <button class="btn-primary" onclick="addEvent()">Save</button>
+        <button class="btn-secondary" onclick="toggleForm('add-event-wrap')">Cancel</button>
+      </div>
+    </div>
+  </div>
+  <div class="cal-grid" style="margin-bottom:6px;">
+    ${days.map(d => `<p style="font-size:11px;font-weight:500;color:var(--text2);text-align:center;">${d}</p>`).join('')}
+  </div>
+  <div class="cal-grid mb-16">${cells}</div>
+  <p class="sl">All events</p>
+  ${D.events.sort((a, b) => a.date.localeCompare(b.date)).map(e => `
+  <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:0.5px solid var(--border);">
+    <i class="ti ti-${e.type === 'meeting' ? 'users' : 'clock'}" style="font-size:14px;color:var(--text2);"></i>
+    <div style="flex:1;">
+      <p style="font-size:13px;font-weight:500;margin-bottom:1px;">${e.title}</p>
+      <p class="ghost" style="font-size:11px;">${e.date} · ${pname(e.project)}</p>
+    </div>
+    <button class="btn-icon" onclick="delEvent('${e.id}')"><i class="ti ti-trash"></i></button>
+  </div>`).join('')}`;
+}
+
+function addEvent() {
+  const title = document.getElementById('ne-title').value.trim(); if (!title) return;
+  D.events.push({ id: 'e' + Date.now(), date: document.getElementById('ne-date').value, title, project: document.getElementById('ne-proj').value, type: document.getElementById('ne-type').value });
+  save(); render('calendar');
+}
+function delEvent(id) { D.events = D.events.filter(e => e.id !== id); save(); render('calendar'); }
+
+// ── Contacts ───────────────────────────────────────────────
+function vContacts() {
+  return `
+  <div class="row mb-16" style="justify-content:flex-end;">
+    <button class="btn-primary" onclick="toggleForm('add-contact-wrap')"><i class="ti ti-plus"></i> Add contact</button>
+  </div>
+  <div id="add-contact-wrap" class="form-box hidden">
+    <p class="form-title">New contact</p>
+    <div class="form-col">
+      <div class="row"><input id="nc-name" placeholder="Full name" style="flex:1;"><input id="nc-co" placeholder="Company" style="flex:1;"></div>
+      <div class="row"><input id="nc-role" placeholder="Role" style="flex:1;"><select id="nc-proj">${D.projects.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}<option value="both">Both projects</option></select></div>
+      <div class="row"><input id="nc-phone" placeholder="Phone" style="flex:1;"><input id="nc-email" placeholder="Email" style="flex:1;"></div>
+      <div class="row">
+        <button class="btn-primary" onclick="addContact()">Save</button>
+        <button class="btn-secondary" onclick="toggleForm('add-contact-wrap')">Cancel</button>
+      </div>
+    </div>
+  </div>
+  <div class="grid-3">
+    ${D.contacts.map(c => `
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <div class="avatar">${initials(c.name)}</div>
+        <div style="flex:1;min-width:0;">
+          <p style="font-size:14px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.name}</p>
+          <p class="ghost" style="font-size:12px;">${c.role}</p>
+        </div>
+        <button class="btn-icon" onclick="delContact('${c.id}')"><i class="ti ti-trash"></i></button>
+      </div>
+      <div style="border-top:0.5px solid var(--border);padding-top:8px;display:flex;flex-direction:column;gap:4px;">
+        <p style="font-size:12px;"><i class="ti ti-building" style="font-size:13px;vertical-align:-1px;margin-right:5px;"></i>${c.company}</p>
+        <p style="font-size:12px;"><i class="ti ti-phone" style="font-size:13px;vertical-align:-1px;margin-right:5px;"></i>${c.phone}</p>
+        <p style="font-size:12px;color:var(--info-text);"><i class="ti ti-mail" style="font-size:13px;vertical-align:-1px;margin-right:5px;"></i>${c.email}</p>
+        <p style="margin-top:4px;"><span class="tag tag-progress">${c.project === 'both' ? 'Both projects' : pname(c.project)}</span></p>
+      </div>
+    </div>`).join('')}
+  </div>`;
+}
+
+function addContact() {
+  const name = document.getElementById('nc-name').value.trim(); if (!name) return;
+  D.contacts.push({ id: 'c' + Date.now(), name, company: document.getElementById('nc-co').value, role: document.getElementById('nc-role').value, phone: document.getElementById('nc-phone').value, email: document.getElementById('nc-email').value, project: document.getElementById('nc-proj').value });
+  save(); render('contacts');
+}
+function delContact(id) { D.contacts = D.contacts.filter(c => c.id !== id); save(); render('contacts'); }
+
+// ── Generate ───────────────────────────────────────────────
+const PROMPTS = {
+  'Email – sub coordination': 'Draft a professional email to a subcontractor requesting missing foreman contact details and an updated schedule for Hillsdale Flats. Keep it concise. Sign as Burhan.',
+  'Email – DOEE status update': 'Draft a project status update email to Lawrence Omar at DOEE summarizing progress on the DC bio-retention project, referencing the 24 structures and January 2028 target. Sign as Burhan.',
+  'RFI follow-up email': 'Draft a firm but courteous follow-up email about an outstanding RFI that has not been responded to in 5 business days. Sign as Burhan.',
+  'Foreman meeting agenda': 'Create a foreman meeting agenda for Hillsdale Flats covering: safety, schedule updates, subcontractor coordination, open RFIs and submittals, and 2-week lookahead.',
+  'Meeting minutes from notes': 'Convert rough meeting notes into professional minutes with sections: Attendees, Discussion Items, Decisions Made, Action Items with owners and due dates. [PASTE NOTES BELOW]',
+  '4-week lookahead schedule': 'Create a 4-week lookahead schedule table for [PROJECT]. Columns: Week, Activity, Crew/Sub, Resources Needed, Predecessor, Notes. Fill for phase: [DESCRIBE PHASE]',
+  'Schedule delay notice': 'Draft a formal schedule delay notice. Include: description, cause, milestone impact, responsible party, recovery action. [DESCRIBE DELAY]',
+  'Made in America checklist': 'Draft a Made in America compliance checklist for the DC bio-retention project covering materials, verification steps, and DOEE submission fields.',
+  'Non-compliance notice to sub': 'Draft a non-compliance notice to [SUBCONTRACTOR] for failure to [ISSUE]. Include what was required, what was missed, cure deadline, and consequences. Sign as Burhan.'
+};
+let lastAI = '';
+
+function vGenerate() {
+  const opts = Object.keys(PROMPTS).map(k => `<option value="${k}">${k}</option>`).join('');
+  return `
+  <div class="card mb-12">
+    <p class="sl">AI content generator</p>
+    <div class="form-col">
+      <select id="pp" onchange="loadP()" style="width:100%;">${opts}</select>
+      <textarea id="pb" style="width:100%;min-height:110px;font-size:13px;line-height:1.6;resize:vertical;">${PROMPTS[Object.keys(PROMPTS)[0]]}</textarea>
+      <div class="row">
+        <button class="btn-primary" onclick="runAI()"><i class="ti ti-sparkles"></i> Generate with Claude</button>
+        <p class="ghost" style="font-size:11px;">Requires Anthropic API key</p>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <input id="api-key" type="password" placeholder="sk-ant-... (stored locally only)" style="flex:1;font-size:12px;">
+        <button class="btn-secondary" onclick="saveKey()">Save key</button>
+      </div>
+    </div>
+  </div>
+  <div id="ai-load" class="hidden"><p class="ghost" style="font-size:13px;margin-bottom:12px;">Generating...</p></div>
+  <div id="ai-wrap" class="hidden">
+    <p class="sl">Result</p>
+    <div class="ai-out" id="ai-out"></div>
+    <div class="row" style="margin-top:8px;gap:6px;">
+      <button class="btn-secondary" onclick="copyAI()"><i class="ti ti-copy"></i> Copy</button>
+    </div>
+  </div>`;
+}
+
+function loadP() { const pb = document.getElementById('pb'), pp = document.getElementById('pp'); if (pb && pp && PROMPTS[pp.value]) pb.value = PROMPTS[pp.value]; }
+function saveKey() { const k = document.getElementById('api-key').value.trim(); if (k) { localStorage.setItem('pm_apikey', k); alert('API key saved locally.'); } }
+
+async function runAI() {
+  const key = localStorage.getItem('pm_apikey');
+  if (!key) { alert('Please enter and save your Anthropic API key first.'); return; }
+  const p = document.getElementById('pb').value.trim(); if (!p) return;
+  document.getElementById('ai-wrap').classList.add('hidden');
+  document.getElementById('ai-load').classList.remove('hidden');
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1000, system: 'You are a construction project management assistant for Burhan, a PM on Hillsdale Flats and the DC Bio-Retention project. Write professional, concise content. Return plain text only, no markdown.', messages: [{ role: 'user', content: p }] })
+    });
+    const d = await r.json();
+    lastAI = d.content?.[0]?.text || d.error?.message || 'No response.';
+    document.getElementById('ai-out').textContent = lastAI;
+    document.getElementById('ai-wrap').classList.remove('hidden');
+  } catch (e) {
+    document.getElementById('ai-out').textContent = 'Error: ' + e.message;
+    document.getElementById('ai-wrap').classList.remove('hidden');
+  }
+  document.getElementById('ai-load').classList.add('hidden');
+}
+function copyAI() { navigator.clipboard.writeText(lastAI).catch(() => {}); }
+
+// ── Utilities ──────────────────────────────────────────────
+function toggleForm(id) { const el = document.getElementById(id); if (el) el.classList.toggle('hidden'); }
+
+// ── Boot ───────────────────────────────────────────────────
+load();
+render('dashboard');
+</script>
+</body>
+</html>
