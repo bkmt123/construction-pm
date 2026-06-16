@@ -104,6 +104,7 @@
       <button class="nav-btn" onclick="showView('generate',this)"><i class="ti ti-sparkles"></i> Generate</button>
       <button class="nav-btn" onclick="showView('prompts',this)"><i class="ti ti-prompt"></i> Prompts</button>
       <button class="nav-btn" onclick="showView('projects',this)"><i class="ti ti-building-skyscraper"></i> Projects</button>
+      <button class="nav-btn" onclick="showView('estimate',this)"><i class="ti ti-calculator"></i> Estimate</button>
     </nav>
   </div>
 </header>
@@ -186,6 +187,7 @@ function render(v) {
   else if (v === 'generate') r.innerHTML = vGenerate();
   else if (v === 'prompts') r.innerHTML = vPrompts();
   else if (v === 'projects') r.innerHTML = vProjects();
+  else if (v === 'estimate') r.innerHTML = vEstimate();
 }
 
 // ── Dashboard ──────────────────────────────────────────────
@@ -747,6 +749,260 @@ function useInGenerate(label, btn) {
 
 // ── Utilities ──────────────────────────────────────────────
 function toggleForm(id) { const el = document.getElementById(id); if (el) el.classList.toggle('hidden'); }
+
+// ── Estimate ───────────────────────────────────────────────
+const EST_KEY = 'pm_estimates_v1';
+const CSI_DIVISIONS = [
+  '01 - General Requirements', '02 - Existing Conditions', '03 - Concrete',
+  '04 - Masonry', '05 - Metals', '06 - Wood & Plastics', '07 - Thermal & Moisture',
+  '08 - Openings', '09 - Finishes', '10 - Specialties', '11 - Equipment',
+  '12 - Furnishings', '13 - Special Construction', '14 - Conveying Equipment',
+  '21 - Fire Suppression', '22 - Plumbing', '23 - HVAC', '26 - Electrical',
+  '27 - Communications', '28 - Electronic Safety', '31 - Earthwork',
+  '32 - Exterior Improvements', '33 - Utilities'
+];
+
+let estimates = [];
+let activeEst = null;
+
+function loadEstimates() {
+  try { const s = localStorage.getItem(EST_KEY); estimates = s ? JSON.parse(s) : []; } catch { estimates = []; }
+}
+function saveEstimates() { try { localStorage.setItem(EST_KEY, JSON.stringify(estimates)); } catch {} }
+
+function vEstimate() {
+  loadEstimates();
+  if (activeEst && !estimates.find(e => e.id === activeEst)) activeEst = null;
+  const est = estimates.find(e => e.id === activeEst);
+
+  const estList = `
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:1rem;">
+    <p style="font-size:15px;font-weight:600;">Estimates</p>
+    <button class="btn-primary" onclick="newEstimate()"><i class="ti ti-plus"></i> New estimate</button>
+  </div>
+  <div id="est-new-wrap" class="form-box hidden">
+    <p class="form-title">New estimate</p>
+    <div class="form-col">
+      <input id="en-name" placeholder="Estimate name (e.g. Hillsdale Flats – Bid)" style="width:100%;">
+      <div class="row">
+        <select id="en-proj">${D.projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}<option value="">Other</option></select>
+        <input id="en-client" placeholder="Client / Owner" style="flex:1;">
+      </div>
+      <div class="row">
+        <input id="en-overhead" type="number" placeholder="Overhead %" value="10" style="width:90px;">
+        <input id="en-profit" type="number" placeholder="Profit %" value="8" style="width:80px;">
+        <input id="en-bond" type="number" placeholder="Bond %" value="1.5" style="width:80px;">
+        <input id="en-contingency" type="number" placeholder="Contingency %" value="5" style="width:110px;">
+      </div>
+      <div class="row">
+        <button class="btn-primary" onclick="createEstimate()">Create</button>
+        <button class="btn-secondary" onclick="toggleForm('est-new-wrap')">Cancel</button>
+      </div>
+    </div>
+  </div>
+  ${estimates.length === 0 ? '<p class="ghost" style="font-size:13px;">No estimates yet. Create one above.</p>' :
+    estimates.map(e => {
+      const total = calcTotal(e);
+      return `
+      <div class="card mb-8" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;cursor:pointer;" onclick="openEstimate('${e.id}')">
+        <div>
+          <p style="font-size:14px;font-weight:600;margin-bottom:2px;">${e.name}</p>
+          <p class="ghost" style="font-size:12px;">${e.client || 'No client'} · ${e.items.length} line items · Created ${e.created}</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <p style="font-size:16px;font-weight:600;">$${total.bid.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</p>
+          <button class="btn-icon" onclick="event.stopPropagation();delEstimate('${e.id}')"><i class="ti ti-trash"></i></button>
+        </div>
+      </div>`;
+    }).join('')}`;
+
+  if (!est) return estList;
+
+  const subtotal = est.items.reduce((s,i) => s + (parseFloat(i.qty||0) * parseFloat(i.unit||0)), 0);
+  const overhead = subtotal * (parseFloat(est.overhead||0)/100);
+  const profit = (subtotal + overhead) * (parseFloat(est.profit||0)/100);
+  const bond = (subtotal + overhead + profit) * (parseFloat(est.bond||0)/100);
+  const contingency = subtotal * (parseFloat(est.contingency||0)/100);
+  const bid = subtotal + overhead + profit + bond + contingency;
+
+  const byDiv = {};
+  est.items.forEach(i => {
+    const d = i.division || 'Uncategorized';
+    if (!byDiv[d]) byDiv[d] = [];
+    byDiv[d].push(i);
+  });
+
+  return `
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:1.25rem;flex-wrap:wrap;">
+    <button class="btn-secondary" onclick="activeEst=null;render('estimate')"><i class="ti ti-arrow-left"></i> All estimates</button>
+    <p style="font-size:15px;font-weight:600;flex:1;">${est.name}</p>
+    <button class="btn-secondary" onclick="exportEstimate('${est.id}')"><i class="ti ti-download"></i> Export CSV</button>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:1.25rem;">
+    <div class="metric"><p class="ghost" style="font-size:11px;margin-bottom:3px;">Direct cost</p><p style="font-size:16px;font-weight:600;">$${subtotal.toLocaleString('en-US',{maximumFractionDigits:0})}</p></div>
+    <div class="metric"><p class="ghost" style="font-size:11px;margin-bottom:3px;">Overhead ${est.overhead}%</p><p style="font-size:16px;font-weight:600;">$${overhead.toLocaleString('en-US',{maximumFractionDigits:0})}</p></div>
+    <div class="metric"><p class="ghost" style="font-size:11px;margin-bottom:3px;">Profit ${est.profit}%</p><p style="font-size:16px;font-weight:600;">$${profit.toLocaleString('en-US',{maximumFractionDigits:0})}</p></div>
+    <div class="metric"><p class="ghost" style="font-size:11px;margin-bottom:3px;">Contingency ${est.contingency}%</p><p style="font-size:16px;font-weight:600;">$${contingency.toLocaleString('en-US',{maximumFractionDigits:0})}</p></div>
+    <div class="metric" style="border:0.5px solid var(--border2);"><p class="ghost" style="font-size:11px;margin-bottom:3px;">Bid total</p><p style="font-size:18px;font-weight:700;">$${bid.toLocaleString('en-US',{maximumFractionDigits:0})}</p></div>
+  </div>
+
+  <div class="card mb-12">
+    <p class="sl">Add line item</p>
+    <div class="form-col">
+      <div class="row">
+        <select id="li-div" style="flex:1;">${CSI_DIVISIONS.map(d=>`<option value="${d}">${d}</option>`).join('')}</select>
+        <input id="li-desc" placeholder="Description" style="flex:2;">
+      </div>
+      <div class="row">
+        <input id="li-qty" type="number" placeholder="Qty" style="width:70px;">
+        <select id="li-uom" style="width:80px;">
+          <option>LS</option><option>SF</option><option>LF</option><option>CY</option>
+          <option>EA</option><option>TN</option><option>HR</option><option>DAY</option>
+        </select>
+        <input id="li-unit" type="number" placeholder="Unit $" style="width:90px;">
+        <input id="li-labor" type="number" placeholder="Labor %" value="40" style="width:80px;">
+        <input id="li-notes" placeholder="Notes" style="flex:1;">
+        <button class="btn-primary" onclick="addLineItem('${est.id}')"><i class="ti ti-plus"></i> Add</button>
+      </div>
+    </div>
+  </div>
+
+  ${Object.keys(byDiv).length === 0 ? '<p class="ghost" style="font-size:13px;">No line items yet. Add one above.</p>' :
+    Object.entries(byDiv).map(([div, items]) => {
+      const divTotal = items.reduce((s,i) => s + (parseFloat(i.qty||0)*parseFloat(i.unit||0)), 0);
+      return `
+      <div class="card mb-8">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <p style="font-size:13px;font-weight:600;">${div}</p>
+          <p style="font-size:13px;font-weight:600;">$${divTotal.toLocaleString('en-US',{maximumFractionDigits:0})}</p>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <thead>
+            <tr style="border-bottom:0.5px solid var(--border);">
+              <th style="text-align:left;padding:4px 6px;color:var(--text2);font-weight:500;">Description</th>
+              <th style="text-align:right;padding:4px 6px;color:var(--text2);font-weight:500;">Qty</th>
+              <th style="text-align:left;padding:4px 6px;color:var(--text2);font-weight:500;">UOM</th>
+              <th style="text-align:right;padding:4px 6px;color:var(--text2);font-weight:500;">Unit $</th>
+              <th style="text-align:right;padding:4px 6px;color:var(--text2);font-weight:500;">Total</th>
+              <th style="text-align:right;padding:4px 6px;color:var(--text2);font-weight:500;">Labor $</th>
+              <th style="padding:4px 6px;"></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items.map(i => {
+              const tot = parseFloat(i.qty||0)*parseFloat(i.unit||0);
+              const lab = tot*(parseFloat(i.labor||0)/100);
+              return `
+              <tr style="border-bottom:0.5px solid var(--border);">
+                <td style="padding:6px 6px;">${i.desc}<br><span style="color:var(--text2);font-size:11px;">${i.notes||''}</span></td>
+                <td style="text-align:right;padding:6px 6px;">${i.qty}</td>
+                <td style="padding:6px 6px;">${i.uom}</td>
+                <td style="text-align:right;padding:6px 6px;">$${parseFloat(i.unit).toLocaleString('en-US',{maximumFractionDigits:2})}</td>
+                <td style="text-align:right;padding:6px 6px;font-weight:500;">$${tot.toLocaleString('en-US',{maximumFractionDigits:0})}</td>
+                <td style="text-align:right;padding:6px 6px;color:var(--text2);">$${lab.toLocaleString('en-US',{maximumFractionDigits:0})}</td>
+                <td style="padding:6px 4px;"><button class="btn-icon" onclick="delLineItem('${est.id}','${i.id}')"><i class="ti ti-trash"></i></button></td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+    }).join('')}
+
+  <div class="card" style="margin-top:1rem;border-top:2px solid var(--border2);">
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      <div style="display:flex;justify-content:space-between;font-size:13px;"><span class="ghost">Direct cost</span><span>$${subtotal.toLocaleString('en-US',{maximumFractionDigits:0})}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;"><span class="ghost">Overhead (${est.overhead}%)</span><span>$${overhead.toLocaleString('en-US',{maximumFractionDigits:0})}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;"><span class="ghost">Profit (${est.profit}%)</span><span>$${profit.toLocaleString('en-US',{maximumFractionDigits:0})}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;"><span class="ghost">Bond (${est.bond}%)</span><span>$${bond.toLocaleString('en-US',{maximumFractionDigits:0})}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;"><span class="ghost">Contingency (${est.contingency}%)</span><span>$${contingency.toLocaleString('en-US',{maximumFractionDigits:0})}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:700;border-top:0.5px solid var(--border);padding-top:8px;margin-top:4px;"><span>Bid total</span><span>$${bid.toLocaleString('en-US',{maximumFractionDigits:0})}</span></div>
+    </div>
+  </div>`;
+}
+
+function calcTotal(est) {
+  const subtotal = est.items.reduce((s,i) => s + (parseFloat(i.qty||0)*parseFloat(i.unit||0)), 0);
+  const overhead = subtotal * (parseFloat(est.overhead||0)/100);
+  const profit = (subtotal+overhead)*(parseFloat(est.profit||0)/100);
+  const bond = (subtotal+overhead+profit)*(parseFloat(est.bond||0)/100);
+  const contingency = subtotal*(parseFloat(est.contingency||0)/100);
+  return { subtotal, overhead, profit, bond, contingency, bid: subtotal+overhead+profit+bond+contingency };
+}
+
+function newEstimate() { toggleForm('est-new-wrap'); }
+
+function createEstimate() {
+  const name = document.getElementById('en-name').value.trim(); if (!name) return;
+  const est = {
+    id: 'est' + Date.now(),
+    name,
+    project: document.getElementById('en-proj').value,
+    client: document.getElementById('en-client').value,
+    overhead: document.getElementById('en-overhead').value || 10,
+    profit: document.getElementById('en-profit').value || 8,
+    bond: document.getElementById('en-bond').value || 1.5,
+    contingency: document.getElementById('en-contingency').value || 5,
+    created: new Date().toISOString().slice(0,10),
+    items: []
+  };
+  estimates.push(est);
+  saveEstimates();
+  activeEst = est.id;
+  render('estimate');
+}
+
+function openEstimate(id) { activeEst = id; render('estimate'); }
+
+function delEstimate(id) {
+  if (!confirm('Delete this estimate?')) return;
+  estimates = estimates.filter(e => e.id !== id);
+  if (activeEst === id) activeEst = null;
+  saveEstimates(); render('estimate');
+}
+
+function addLineItem(estId) {
+  const desc = document.getElementById('li-desc').value.trim(); if (!desc) return;
+  const est = estimates.find(e => e.id === estId); if (!est) return;
+  est.items.push({
+    id: 'li' + Date.now(),
+    division: document.getElementById('li-div').value,
+    desc,
+    qty: document.getElementById('li-qty').value || 1,
+    uom: document.getElementById('li-uom').value,
+    unit: document.getElementById('li-unit').value || 0,
+    labor: document.getElementById('li-labor').value || 0,
+    notes: document.getElementById('li-notes').value
+  });
+  saveEstimates(); render('estimate');
+}
+
+function delLineItem(estId, itemId) {
+  const est = estimates.find(e => e.id === estId); if (!est) return;
+  est.items = est.items.filter(i => i.id !== itemId);
+  saveEstimates(); render('estimate');
+}
+
+function exportEstimate(estId) {
+  const est = estimates.find(e => e.id === estId); if (!est) return;
+  const t = calcTotal(est);
+  let csv = 'Division,Description,Qty,UOM,Unit Cost,Total,Labor,Notes\n';
+  est.items.forEach(i => {
+    const tot = parseFloat(i.qty||0)*parseFloat(i.unit||0);
+    const lab = tot*(parseFloat(i.labor||0)/100);
+    csv += `"${i.division}","${i.desc}",${i.qty},${i.uom},${i.unit},${tot.toFixed(2)},${lab.toFixed(2)},"${i.notes||''}"\n`;
+  });
+  csv += `\n,,,,Direct Cost,$${t.subtotal.toFixed(2)},,\n`;
+  csv += `,,,,Overhead ${est.overhead}%,$${t.overhead.toFixed(2)},,\n`;
+  csv += `,,,,Profit ${est.profit}%,$${t.profit.toFixed(2)},,\n`;
+  csv += `,,,,Bond ${est.bond}%,$${t.bond.toFixed(2)},,\n`;
+  csv += `,,,,Contingency ${est.contingency}%,$${t.contingency.toFixed(2)},,\n`;
+  csv += `,,,,BID TOTAL,$${t.bid.toFixed(2)},,\n`;
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = est.name.replace(/\s+/g,'-') + '-estimate.csv';
+  a.click();
+}
 
 // ── Boot ───────────────────────────────────────────────────
 load();
