@@ -102,6 +102,8 @@
       <button class="nav-btn" onclick="showView('calendar',this)"><i class="ti ti-calendar"></i> Calendar</button>
       <button class="nav-btn" onclick="showView('contacts',this)"><i class="ti ti-users"></i> Contacts</button>
       <button class="nav-btn" onclick="showView('generate',this)"><i class="ti ti-sparkles"></i> Generate</button>
+      <button class="nav-btn" onclick="showView('prompts',this)"><i class="ti ti-prompt"></i> Prompts</button>
+      <button class="nav-btn" onclick="showView('projects',this)"><i class="ti ti-building-skyscraper"></i> Projects</button>
     </nav>
   </div>
 </header>
@@ -182,6 +184,8 @@ function render(v) {
   else if (v === 'calendar') r.innerHTML = vCalendar();
   else if (v === 'contacts') r.innerHTML = vContacts();
   else if (v === 'generate') r.innerHTML = vGenerate();
+  else if (v === 'prompts') r.innerHTML = vPrompts();
+  else if (v === 'projects') r.innerHTML = vProjects();
 }
 
 // ── Dashboard ──────────────────────────────────────────────
@@ -520,13 +524,16 @@ const PROMPTS = {
 let lastAI = '';
 
 function vGenerate() {
-  const opts = Object.keys(PROMPTS).map(k => `<option value="${k}">${k}</option>`).join('');
+  const pending = (() => { try { const p = localStorage.getItem('pm_pending_prompt'); localStorage.removeItem('pm_pending_prompt'); return p ? JSON.parse(p) : null; } catch { return null; } })();
+  const firstKey = pending ? pending.label : Object.keys(PROMPTS)[0];
+  const firstVal = pending ? pending.prompt : PROMPTS[Object.keys(PROMPTS)[0]];
+  const opts = Object.keys(PROMPTS).map(k => `<option value="${k}" ${k === firstKey ? 'selected' : ''}>${k}</option>`).join('');
   return `
   <div class="card mb-12">
     <p class="sl">AI content generator</p>
     <div class="form-col">
       <select id="pp" onchange="loadP()" style="width:100%;">${opts}</select>
-      <textarea id="pb" style="width:100%;min-height:110px;font-size:13px;line-height:1.6;resize:vertical;">${PROMPTS[Object.keys(PROMPTS)[0]]}</textarea>
+      <textarea id="pb" style="width:100%;min-height:110px;font-size:13px;line-height:1.6;resize:vertical;">${firstVal}</textarea>
       <div class="row">
         <button class="btn-primary" onclick="runAI()"><i class="ti ti-sparkles"></i> Generate with Claude</button>
         <p class="ghost" style="font-size:11px;">Requires Anthropic API key</p>
@@ -573,6 +580,170 @@ async function runAI() {
   document.getElementById('ai-load').classList.add('hidden');
 }
 function copyAI() { navigator.clipboard.writeText(lastAI).catch(() => {}); }
+
+// ── Projects ───────────────────────────────────────────────
+function vProjects() {
+  return `
+  <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:1rem;">
+    ${D.projects.map(p => `
+    <div class="card">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:0;">
+          <div class="row" style="margin-bottom:6px;">
+            <p style="font-size:15px;font-weight:600;">${p.name}</p>
+            <span class="tag tag-${p.status === 'active' ? 'progress' : 'done'}">${p.status}</span>
+          </div>
+          <div class="row" style="margin-bottom:12px;gap:6px;">
+            <p class="ghost" style="font-size:12px;">Phase:</p>
+            <input id="phase-${p.id}" value="${p.phase}" style="font-size:12px;padding:3px 8px;flex:1;max-width:200px;" onchange="updatePhase('${p.id}',this.value)">
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <input type="range" min="0" max="100" step="1" value="${p.completion}" oninput="liveCompletion('${p.id}',this.value)" onchange="updateCompletion('${p.id}',this.value)" style="flex:1;">
+            <span id="pct-${p.id}" style="font-size:13px;font-weight:500;min-width:36px;">${p.completion}%</span>
+          </div>
+          <div style="margin-top:8px;">
+            <div class="progress-bar"><div class="progress-fill" id="bar-${p.id}" style="width:${p.completion}%;"></div></div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
+          <select onchange="updateStatus('${p.id}',this.value)" style="font-size:11px;padding:3px 6px;">
+            <option ${p.status === 'active' ? 'selected' : ''} value="active">Active</option>
+            <option ${p.status === 'complete' ? 'selected' : ''} value="complete">Complete</option>
+            <option ${p.status === 'on-hold' ? 'selected' : ''} value="on-hold">On hold</option>
+          </select>
+          <button class="btn-icon" onclick="delProject('${p.id}')"><i class="ti ti-trash"></i></button>
+        </div>
+      </div>
+    </div>`).join('')}
+  </div>
+  <div class="card">
+    <p class="form-title">Add project</p>
+    <div class="form-col">
+      <input id="np-name" placeholder="Project name" style="width:100%;">
+      <div class="row">
+        <input id="np-phase" placeholder="Current phase (e.g. Construction)" style="flex:1;">
+        <button class="btn-primary" onclick="addProject()">Add</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function liveCompletion(id, val) {
+  const pct = document.getElementById('pct-' + id);
+  const bar = document.getElementById('bar-' + id);
+  if (pct) pct.textContent = Math.round(val) + '%';
+  if (bar) bar.style.width = val + '%';
+}
+function updateCompletion(id, val) { const p = D.projects.find(p => p.id === id); if (p) { p.completion = parseInt(val); save(); } }
+function updatePhase(id, val) { const p = D.projects.find(p => p.id === id); if (p) { p.phase = val; save(); } }
+function updateStatus(id, val) { const p = D.projects.find(p => p.id === id); if (p) { p.status = val; save(); render('projects'); } }
+function addProject() {
+  const name = document.getElementById('np-name').value.trim(); if (!name) return;
+  D.projects.push({ id: 'p' + Date.now(), name, status: 'active', phase: document.getElementById('np-phase').value || 'Pre-construction', completion: 0 });
+  save(); render('projects');
+}
+function delProject(id) {
+  if (!confirm('Delete this project?')) return;
+  D.projects = D.projects.filter(p => p.id !== id); save(); render('projects');
+}
+
+// ── Prompts ────────────────────────────────────────────────
+const PROMPT_TABS = {
+  Communications: {
+    icon: 'ti-mail',
+    desc: 'Emails, coordination messages, and stakeholder updates',
+    items: [
+      { label: 'Subcontractor coordination email', hint: 'Missing info, deadlines, foreman details', prompt: 'Draft a professional email to a subcontractor requesting missing foreman contact details and updated schedule for Hillsdale Flats. Keep it concise and list-formatted. Sign as Burhan.' },
+      { label: 'DOEE/DDOT compliance update', hint: 'DC bio-retention project status', prompt: 'Draft a status update email to Lawrence Omar at DOEE summarizing progress on the DC bio-retention project, referencing the 24 structures and January 2028 target. Sign as Burhan.' },
+      { label: 'RFI response follow-up', hint: 'Nudge on an outstanding RFI', prompt: 'Draft a professional follow-up email about an outstanding RFI that has not been responded to in 5 business days. Keep it firm but courteous. Sign as Burhan.' }
+    ]
+  },
+  Meetings: {
+    icon: 'ti-users',
+    desc: 'Agendas, minutes, and foreman meeting prep',
+    items: [
+      { label: 'Foreman meeting agenda', hint: 'Weekly site coordination', prompt: 'Create a foreman meeting agenda for Hillsdale Flats covering: safety, schedule updates, subcontractor coordination, open RFIs and submittals, and lookahead for next 2 weeks.' },
+      { label: 'Meeting minutes from notes', hint: 'Paste your raw notes, get formatted minutes', prompt: 'Convert the following rough notes into professional meeting minutes with sections for Attendees, Discussion Items, Decisions Made, and Action Items with owners and due dates: [PASTE YOUR NOTES HERE]' },
+      { label: 'DC bio-retention meeting summary', hint: 'Project-specific recap', prompt: 'Draft meeting minutes for the DC bio-retention project. Attendees include Juwan Mohammed (superintendent), Lawrence Omar (DOEE reviewer), and Bowman Consulting Group (Engineer of Record). Include sections for compliance items, 4-week lookahead, and action items.' }
+    ]
+  },
+  Documentation: {
+    icon: 'ti-file-text',
+    desc: 'Procore logs, submittals, RFIs, and project records',
+    items: [
+      { label: 'RFI log entry', hint: 'Format a new RFI for Procore', prompt: 'Format the following issue as a Procore RFI entry with fields: RFI number, subject, project, date submitted, submitted by, assigned to, due date, question, and suggested answer: [DESCRIBE THE ISSUE]' },
+      { label: 'Submittal log entry', hint: 'Submittal tracking for Procore', prompt: 'Create a submittal log entry for Procore with fields: submittal number, spec section, description, submitted by (subcontractor), date received, date forwarded to EOR, required return date, and status.' },
+      { label: 'Made in America checklist', hint: 'DC project compliance form', prompt: 'Draft a Made in America compliance checklist for the DC bio-retention project, covering materials to be documented, verification steps, and required form fields for DOEE submission.' }
+    ]
+  },
+  Scheduling: {
+    icon: 'ti-calendar',
+    desc: '4-week lookaheads, milestones, and delay tracking',
+    items: [
+      { label: '4-week look-ahead', hint: 'Build the weekly lookahead table', prompt: 'Create a 4-week look-ahead schedule table for [PROJECT NAME]. Columns: Week, Activity, Crew/Sub Responsible, Resources Needed, Predecessor Activities, Notes. Fill with realistic construction sequencing for: [DESCRIBE CURRENT PHASE]' },
+      { label: 'Schedule delay notice', hint: 'Document a delay event', prompt: 'Draft a formal schedule delay notice documenting the following delay event. Include: description of delay, cause, anticipated impact on milestone dates, responsible party, and recommended recovery action: [DESCRIBE DELAY]' },
+      { label: 'Bio-retention milestone tracker', hint: 'DC project key dates', prompt: 'Create a milestone tracker for the DC bio-retention project (24 structures, target completion January 2028). Include phases: mobilization, excavation, structure installation, underdrain and geotextile, final grading, DOEE inspection, and closeout.' }
+    ]
+  },
+  Subcontractors: {
+    icon: 'ti-building',
+    desc: 'Coordination, follow-ups, and tracking',
+    items: [
+      { label: 'Missing info request (multi-sub)', hint: 'List format, like your Shalom email', prompt: 'Draft a professional email to [CONTACT NAME] requesting the following missing information from these subcontractors: [LIST SUBS AND WHAT IS MISSING]. Keep it list-formatted and concise. Sign as Burhan.' },
+      { label: 'Scope clarification request', hint: 'Get clarity on what a sub is responsible for', prompt: 'Draft a professional email requesting scope clarification from [SUBCONTRACTOR] regarding their responsibilities for [DESCRIBE SCOPE OVERLAP OR GAP]. Reference the contract and ask for written confirmation. Sign as Burhan.' },
+      { label: 'Non-compliance notice', hint: 'When a sub misses a deliverable', prompt: 'Draft a non-compliance notice to [SUBCONTRACTOR] regarding failure to [DESCRIBE ISSUE]. Include: what was required, what was missed, deadline for cure, and consequences if not resolved. Professional but firm tone. Sign as Burhan.' }
+    ]
+  }
+};
+
+let activePromptTab = 'Communications';
+
+function vPrompts() {
+  const tab = PROMPT_TABS[activePromptTab];
+  const tabBtns = Object.entries(PROMPT_TABS).map(([k, v]) => `
+    <button onclick="switchPromptTab('${k}')" style="font-size:12px;padding:5px 12px;border-radius:99px;border:0.5px solid var(--border2);background:${k === activePromptTab ? 'var(--text)' : 'transparent'};color:${k === activePromptTab ? 'var(--bg)' : 'var(--text)'};cursor:pointer;white-space:nowrap;">
+      <i class="${v.icon}"></i> ${k}
+    </button>`).join('');
+
+  return `
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem;" id="prompt-tabs">${tabBtns}</div>
+  <div class="card">
+    <p style="font-size:13px;color:var(--text2);margin-bottom:1rem;">${tab.desc}</p>
+    <div style="display:flex;flex-direction:column;gap:8px;" id="prompt-list">
+      ${tab.items.map(item => `
+      <div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <div style="flex:1;min-width:0;">
+          <p style="font-size:14px;font-weight:500;margin-bottom:2px;">${item.label}</p>
+          <p style="font-size:12px;color:var(--text2);margin:0;">${item.hint}</p>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          <button class="btn-secondary" onclick="copyPrompt(this)" data-prompt="${item.prompt.replace(/"/g,'&quot;')}" style="font-size:12px;"><i class="ti ti-copy"></i> Copy</button>
+          <button class="btn-primary" onclick="useInGenerate('${item.label.replace(/'/g,"\\'")}', this)" data-prompt="${item.prompt.replace(/"/g,'&quot;')}" style="font-size:12px;">Use ↗</button>
+        </div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function switchPromptTab(tab) {
+  activePromptTab = tab;
+  render('prompts');
+  document.querySelectorAll('.nav-btn').forEach(b => { if (b.textContent.trim().includes('Prompts')) b.classList.add('active'); else b.classList.remove('active'); });
+}
+
+function copyPrompt(btn) {
+  const p = btn.getAttribute('data-prompt');
+  navigator.clipboard.writeText(p).catch(() => {});
+  const orig = btn.innerHTML;
+  btn.innerHTML = '<i class="ti ti-check"></i> Copied';
+  setTimeout(() => btn.innerHTML = orig, 1500);
+}
+
+function useInGenerate(label, btn) {
+  const prompt = btn.getAttribute('data-prompt');
+  localStorage.setItem('pm_pending_prompt', JSON.stringify({ label, prompt }));
+  showView('generate', document.querySelector('.nav-btn:nth-child(7)'));
+}
 
 // ── Utilities ──────────────────────────────────────────────
 function toggleForm(id) { const el = document.getElementById(id); if (el) el.classList.toggle('hidden'); }
