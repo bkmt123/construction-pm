@@ -87,6 +87,26 @@
   .form-box { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1rem 1.25rem; margin-bottom: 12px; }
   .form-title { font-size: 14px; font-weight: 500; margin-bottom: 10px; }
   .form-col { display: flex; flex-direction: column; gap: 8px; }
+
+  /* ── SYNC BAR ── */
+  .sync-bar { display: flex; align-items: center; gap: 8px; }
+  #sync-badge { font-size: 11px; display: flex; align-items: center; gap: 5px; color: var(--text2); transition: color .3s; white-space: nowrap; }
+  .sync-btn { font-size: 11px; padding: 4px 10px; border-radius: 99px; border: 0.5px solid var(--border2); background: transparent; color: var(--text2); cursor: pointer; white-space: nowrap; }
+  .sync-btn:hover { color: var(--text); border-color: var(--text); }
+  /* ── SYNC MODAL ── */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 100; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal-box { background: var(--bg); border: 0.5px solid var(--border2); border-radius: var(--radius-lg); padding: 24px; width: min(460px, 92vw); }
+  .modal-box h3 { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .modal-sub { font-size: 12px; color: var(--text2); margin-bottom: 16px; line-height: 1.6; }
+  .modal-guide { background: var(--bg2); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 16px; font-size: 12px; color: var(--text2); line-height: 1.9; }
+  .modal-guide strong { color: var(--text); }
+  .modal-guide code { background: var(--bg3); padding: 1px 5px; border-radius: 3px; font-family: monospace; font-size: 11px; }
+  .modal-field { margin-bottom: 12px; }
+  .modal-field label { display: block; font-size: 11px; font-weight: 500; color: var(--text2); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 5px; }
+  .modal-field input { width: 100%; }
+  .modal-footer { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; border-top: 0.5px solid var(--border); padding-top: 14px; margin-top: 4px; }
+  .btn-danger { font-size: 12px; padding: 6px 12px; border-radius: 99px; border: 0.5px solid var(--border2); background: transparent; color: #791f1f; cursor: pointer; margin-right: auto; }
 </style>
 </head>
 <body>
@@ -95,17 +115,21 @@
   <div class="header-inner">
     <div class="logo">Construction PM Hub <span>by Burhan</span></div>
     <nav id="nav">
-      <button class="nav-btn active" onclick="showView('dashboard',this)"><i class="ti ti-layout-dashboard"></i> Dashboard</button>
-      <button class="nav-btn" onclick="showView('tasks',this)"><i class="ti ti-check"></i> Tasks</button>
-      <button class="nav-btn" onclick="showView('rfis',this)"><i class="ti ti-file-description"></i> RFIs</button>
-      <button class="nav-btn" onclick="showView('submittals',this)"><i class="ti ti-files"></i> Submittals</button>
-      <button class="nav-btn" onclick="showView('calendar',this)"><i class="ti ti-calendar"></i> Calendar</button>
-      <button class="nav-btn" onclick="showView('contacts',this)"><i class="ti ti-users"></i> Contacts</button>
-      <button class="nav-btn" onclick="showView('generate',this)"><i class="ti ti-sparkles"></i> Generate</button>
-      <button class="nav-btn" onclick="showView('prompts',this)"><i class="ti ti-prompt"></i> Prompts</button>
-      <button class="nav-btn" onclick="showView('projects',this)"><i class="ti ti-building-skyscraper"></i> Projects</button>
-      <button class="nav-btn" onclick="showView('estimate',this)"><i class="ti ti-calculator"></i> Estimate</button>
+      <button class="nav-btn active" data-view="dashboard" onclick="showView('dashboard',this)"><i class="ti ti-layout-dashboard"></i> Dashboard</button>
+      <button class="nav-btn" data-view="tasks" onclick="showView('tasks',this)"><i class="ti ti-check"></i> Tasks</button>
+      <button class="nav-btn" data-view="rfis" onclick="showView('rfis',this)"><i class="ti ti-file-description"></i> RFIs</button>
+      <button class="nav-btn" data-view="submittals" onclick="showView('submittals',this)"><i class="ti ti-files"></i> Submittals</button>
+      <button class="nav-btn" data-view="calendar" onclick="showView('calendar',this)"><i class="ti ti-calendar"></i> Calendar</button>
+      <button class="nav-btn" data-view="contacts" onclick="showView('contacts',this)"><i class="ti ti-users"></i> Contacts</button>
+      <button class="nav-btn" data-view="generate" onclick="showView('generate',this)"><i class="ti ti-sparkles"></i> Generate</button>
+      <button class="nav-btn" data-view="prompts" onclick="showView('prompts',this)"><i class="ti ti-prompt"></i> Prompts</button>
+      <button class="nav-btn" data-view="projects" onclick="showView('projects',this)"><i class="ti ti-building-skyscraper"></i> Projects</button>
+      <button class="nav-btn" data-view="estimate" onclick="showView('estimate',this)"><i class="ti ti-calculator"></i> Estimate</button>
     </nav>
+    <div class="sync-bar">
+      <span id="sync-badge">⚪ Not synced</span>
+      <button class="sync-btn" onclick="openSyncModal()">☁ Sync</button>
+    </div>
   </div>
 </header>
 
@@ -162,6 +186,116 @@ function load() {
 
 function save() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(D)); } catch {}
+  schedulePush();
+}
+
+// ── AIRTABLE SYNC ─────────────────────────────────────────────────────────────
+const AT = {
+  get key()     { return localStorage.getItem('pm_at_key')    || ''; },
+  get base()    { return localStorage.getItem('pm_at_base')   || ''; },
+  get table()   { return localStorage.getItem('pm_at_table')  || ''; },
+  get record()  { return localStorage.getItem('pm_at_record') || ''; },
+  set record(v) { localStorage.setItem('pm_at_record', v); },
+};
+
+function atReady() { return AT.key && AT.base && AT.table; }
+function atUrl(rid) {
+  const b = `https://api.airtable.com/v0/${AT.base}/${encodeURIComponent(AT.table)}`;
+  return rid ? `${b}/${rid}` : b;
+}
+function atH() { return { 'Authorization': `Bearer ${AT.key}`, 'Content-Type': 'application/json' }; }
+
+function setSyncBadge(status, msg) {
+  const el = document.getElementById('sync-badge'); if (!el) return;
+  const map = {
+    idle:    '⚪ Not configured',
+    syncing: '🔄 Syncing…',
+    saved:   '🟢 Synced',
+    error:   '🔴 ' + (msg || 'Sync error'),
+    offline: '🟡 Offline – saved locally',
+  };
+  el.textContent = map[status] || map.idle;
+  el.style.color = { idle:'', syncing:'#b45309', saved:'#27500a', error:'#791f1f', offline:'#633806' }[status] || '';
+}
+
+let _pushTimer = null;
+function schedulePush() { clearTimeout(_pushTimer); _pushTimer = setTimeout(syncPush, 1800); }
+
+async function syncPull() {
+  if (!atReady()) { setSyncBadge('idle'); return; }
+  setSyncBadge('syncing');
+  try {
+    let data;
+    if (AT.record) {
+      const r = await fetch(atUrl(AT.record), { headers: atH() });
+      data = await r.json();
+      if (data.error) throw new Error(data.error.message);
+      const remote = JSON.parse(data.fields.StateJSON || '{}');
+      if (remote && Object.keys(remote).length) Object.assign(D, remote);
+    } else {
+      const r = await fetch(atUrl() + `?maxRecords=1&filterByFormula={StorageKey}="${STORAGE_KEY}"`, { headers: atH() });
+      data = await r.json();
+      if (data.error) throw new Error(data.error.message);
+      if (data.records && data.records.length) {
+        AT.record = data.records[0].id;
+        const remote = JSON.parse(data.records[0].fields.StateJSON || '{}');
+        if (remote && Object.keys(remote).length) Object.assign(D, remote);
+      }
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(D));
+    setSyncBadge('saved');
+  } catch(e) {
+    setSyncBadge(navigator.onLine ? 'error' : 'offline', e.message);
+  }
+}
+
+async function syncPush() {
+  if (!atReady()) return;
+  setSyncBadge('syncing');
+  const fields = { StorageKey: STORAGE_KEY, StateJSON: JSON.stringify(D) };
+  try {
+    let r, data;
+    if (AT.record) {
+      r = await fetch(atUrl(AT.record), { method:'PATCH', headers:atH(), body:JSON.stringify({fields}) });
+    } else {
+      r = await fetch(atUrl(), { method:'POST', headers:atH(), body:JSON.stringify({fields}) });
+    }
+    data = await r.json();
+    if (data.error) throw new Error(data.error.message);
+    if (!AT.record && data.id) AT.record = data.id;
+    setSyncBadge('saved');
+  } catch(e) {
+    setSyncBadge(navigator.onLine ? 'error' : 'offline', e.message);
+  }
+}
+
+function openSyncModal() {
+  document.getElementById('sync-modal').classList.add('open');
+  document.getElementById('set-at-key').value   = AT.key;
+  document.getElementById('set-at-base').value  = AT.base;
+  document.getElementById('set-at-table').value = AT.table;
+}
+function closeSyncModal() { document.getElementById('sync-modal').classList.remove('open'); }
+
+async function saveSyncCreds() {
+  const k = document.getElementById('set-at-key').value.trim();
+  const b = document.getElementById('set-at-base').value.trim();
+  const t = document.getElementById('set-at-table').value.trim();
+  if (!k || !b || !t) { alert('Please fill in all three fields.'); return; }
+  localStorage.setItem('pm_at_key', k);
+  localStorage.setItem('pm_at_base', b);
+  localStorage.setItem('pm_at_table', t);
+  localStorage.removeItem('pm_at_record');
+  closeSyncModal();
+  await syncPull();
+  render(document.querySelector('.nav-btn.active')?.dataset?.view || 'dashboard');
+}
+
+function clearSyncCreds() {
+  if (!confirm('Remove Airtable credentials? Data stays locally.')) return;
+  ['pm_at_key','pm_at_base','pm_at_table','pm_at_record'].forEach(k => localStorage.removeItem(k));
+  closeSyncModal();
+  setSyncBadge('idle');
 }
 
 function pname(id) { return D.projects.find(p => p.id === id)?.name || id; }
@@ -768,7 +902,7 @@ let activeEst = null;
 function loadEstimates() {
   try { const s = localStorage.getItem(EST_KEY); estimates = s ? JSON.parse(s) : []; } catch { estimates = []; }
 }
-function saveEstimates() { try { localStorage.setItem(EST_KEY, JSON.stringify(estimates)); } catch {} }
+function saveEstimates() { try { localStorage.setItem(EST_KEY, JSON.stringify(estimates)); } catch {} schedulePush(); }
 
 function vEstimate() {
   loadEstimates();
@@ -1004,9 +1138,50 @@ function exportEstimate(estId) {
   a.click();
 }
 
-// ── Boot ───────────────────────────────────────────────────
+// ── Boot ─────────────────────────────────────────────────────────────────────
 load();
 render('dashboard');
+// Pull latest from Airtable after local data is shown (non-blocking)
+(async () => {
+  await syncPull();
+  render(document.querySelector('.nav-btn.active')?.dataset?.view || 'dashboard');
+})();
 </script>
+<!-- ── SYNC MODAL ── -->
+<div class="modal-overlay" id="sync-modal">
+  <div class="modal-box">
+    <h3>☁ Airtable Sync</h3>
+    <p class="modal-sub">Connect to Airtable so your PM data stays in sync across your phone, laptop, and any device you use on the job.</p>
+    <div class="modal-guide">
+      <strong>One-time setup:</strong><br>
+      1. Go to <strong>airtable.com</strong> → free account<br>
+      2. Create a <strong>Base</strong> (e.g. "PM Hub")<br>
+      3. Add two fields to the default table:<br>
+      &nbsp;&nbsp;• <code>StorageKey</code> (Single line text)<br>
+      &nbsp;&nbsp;• <code>StateJSON</code> (Long text)<br>
+      4. Go to <strong>airtable.com/create/tokens</strong> → create token with <code>data.records:read</code> + <code>data.records:write</code> scopes on your base<br>
+      5. Base ID is in the URL: <code>airtable.com/<strong>appXXXXXX</strong>/...</code>
+    </div>
+    <div class="modal-field">
+      <label>Personal Access Token</label>
+      <input type="password" id="set-at-key" placeholder="patXXXXXXXXXXXXXX"/>
+    </div>
+    <div class="modal-field">
+      <label>Base ID</label>
+      <input type="text" id="set-at-base" placeholder="appXXXXXXXXXXXXXX"/>
+    </div>
+    <div class="modal-field">
+      <label>Table Name</label>
+      <input type="text" id="set-at-table" placeholder="Table 1"/>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-danger" onclick="clearSyncCreds()">Clear credentials</button>
+      <button class="btn-secondary" onclick="closeSyncModal()">Cancel</button>
+      <button class="btn-secondary" onclick="syncPush()">Sync now</button>
+      <button class="btn-primary" onclick="saveSyncCreds()">Save & Connect</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
